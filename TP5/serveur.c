@@ -6,7 +6,7 @@
 #define THREAD_MAX    10
 
 void remiseAZeroJournal(void);
-void *threadClient(void* canal, void* adrClientRecue);
+void *threadClient(void* dataRecue);
 
 int fdJournal;
 
@@ -53,6 +53,7 @@ int main(int argc, char *argv[]) {
     erreur_IO("listen");
 
   while (!stop) {
+    DataThread *data;
 
     fin = FAUX;
 
@@ -60,10 +61,17 @@ int main(int argc, char *argv[]) {
     lgAdrClient = sizeof(adrClient);
     canal = accept(ecoute, (struct sockaddr *)&adrClient, &lgAdrClient);
 
+    printf("%s: adr %s, port %hu\n", CMD,
+          stringIP(ntohl(adrClient.sin_addr.s_addr)),
+          ntohs(adrClient.sin_port));
+
+    data = ajouterDataThread();
+    data->spec.canal = canal;
+
     if (canal < 0)
       erreur_IO("accept");
 
-    ret = pthread_create(&idThread[idx], NULL, threadClient, &canal, &adrClient);
+    ret = pthread_create(&idThread[idx], NULL, threadClient, &data);
 
     if (ret != 0)
         erreur_IO("pthread_create");
@@ -89,9 +97,8 @@ int main(int argc, char *argv[]) {
   exit(EXIT_SUCCESS);
 }
 
-void *threadClient(void* canal, void* adrClientRecue) {
-    int* canalRecu = (int* ) canal;
-    struct sockaddr_in* adrClient = (struct sockaddr_in*) adrClientRecue;
+void *threadClient(void* dataRecue) {
+    DataThread* data = (DataThread* ) dataRecue;
 
     char ligne[LIGNE_MAX];
     int lgLue, lgEcr;
@@ -100,16 +107,12 @@ void *threadClient(void* canal, void* adrClientRecue) {
 
     printf("nouveau thread\n");
 
-    printf("%s: adr %s, port %hu\n", CMD,
-          stringIP(ntohl(adrClient->sin_addr.s_addr)),
-          ntohs(adrClient->sin_port));
-
     if (ret < 0)
       erreur_IO("bind");
 
     while(!fin) {
 
-        lgLue = lireLigne(canalRecu, ligne);
+        lgLue = lireLigne(data->spec.canal, ligne);
 
         if (lgLue < 0)
             erreur_IO("lireLigne");
@@ -130,7 +133,7 @@ void *threadClient(void* canal, void* adrClientRecue) {
         else if (strcmp(ligne, "fin") == 0)
         {
             printf("serveur: fin demandee\n");
-            if (close(canalRecu) == -1)
+            if (close(data->spec.canal) == -1)
                 erreur_IO("close canal");
 
             fin = VRAI;
