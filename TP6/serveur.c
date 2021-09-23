@@ -7,6 +7,7 @@
 void *threadSessionClient(void *arg);
 void sessionClient(int canal);
 void remiseAZeroJournal(void);
+void threadsMaker(int nbWorkers);
 
 int fdJournal;
 
@@ -14,10 +15,9 @@ DataSpec dataWorkers[NB_WORKERS];
 
 int main(int argc, char *argv[]) {
   short port;
-  int ecoute, canal, ret;
+  int ecoute, canal, ret, idx;
   struct sockaddr_in adrEcoute, adrClient;
   unsigned int lgAdrClient;
-  DataThread *dataThread;
 
   threadsMaker(NB_WORKERS);
 
@@ -59,12 +59,14 @@ int main(int argc, char *argv[]) {
          stringIP(ntohl(adrClient.sin_addr.s_addr)),
          ntohs(adrClient.sin_port));
 
-    dataThread = ajouterDataThread();
-    dataThread->spec.canal = canal;
-    ret = pthread_create(&dataThread->spec.id, NULL, threadSessionClient,
-                         &dataThread->spec);
-    if (ret != 0)
-      erreur_IO("creation thread");
+    for (idx = 0; idx < NB_WORKERS; idx++) {
+      printf("Is worker %d available ?", idx);
+
+      if (dataWorkers[idx].canal == -1) {
+        dataWorkers[idx].canal = canal;
+        break;
+      }
+    }
   }
 
   if (close(ecoute) == -1)
@@ -80,8 +82,11 @@ void threadsMaker(int nbWorkers) {
   int idx = 0;
   int ret = 0;
 
-  for(idx; idx < nbWorkers; idx++) {
-    ret = pthread_create(&dataWorkers[idx].id, NULL, threadSessionClient, &idx);
+  for(idx = 0; idx < nbWorkers; idx++) {
+    dataWorkers[idx].canal = -1;
+
+    ret = pthread_create(&dataWorkers[idx].id, NULL, threadSessionClient, &dataWorkers[idx]);
+    printf("Création thread n°%d\n", idx);
 
     if (ret != 0)
       erreur_IO("creation thread");
@@ -89,15 +94,15 @@ void threadsMaker(int nbWorkers) {
 }
 
 void *threadSessionClient(void *arg) {
-  int* id = (int *)arg;
-
-  printf("Thread n°%d\n", *id);
+  DataSpec* dataSpec = (DataSpec *)arg;
 
   while(VRAI) {
-    while(dataWorkers[*id].canal == -1)
+    while(dataSpec->canal == -1)
       usleep(1000);
     
-    sessionClient(dataWorkers[*id].canal);
+    sessionClient(dataSpec->canal);
+
+    dataSpec->canal = -1;
   }
 
   pthread_exit(NULL);
