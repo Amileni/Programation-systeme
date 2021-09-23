@@ -2,7 +2,7 @@
 
 #define CMD           "serveur"
 #define NOM_JOURNAL   "journal.log"
-#define NB_WORKERS    5
+#define NB_WORKERS    2
 
 void *threadSessionClient(void *arg);
 void sessionClient(int canal);
@@ -59,13 +59,20 @@ int main(int argc, char *argv[]) {
          stringIP(ntohl(adrClient.sin_addr.s_addr)),
          ntohs(adrClient.sin_port));
 
-    for (idx = 0; idx < NB_WORKERS; idx++) {
-      printf("Is worker %d available ?", idx);
+    idx = 0;
+    while (VRAI) {
+      printf("Is worker %d available ?\n", idx);
 
       if (dataWorkers[idx].canal == -1) {
         dataWorkers[idx].canal = canal;
         break;
       }
+
+      idx++;
+      if (idx == NB_WORKERS)
+        idx = 0;
+      
+      usleep(1000);
     }
   }
 
