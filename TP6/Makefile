@@ -2,7 +2,7 @@
 #
 include ../Makefile.inc
 
-EXE =
+EXE = serveur
 
 ${EXE): ${PSE}
 
