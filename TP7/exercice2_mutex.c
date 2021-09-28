@@ -4,15 +4,20 @@
 #define DEFTHREADS 200
 
 long globale = 0;
+pthread_mutex_t monMutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void * maFonction (void *param) {
   int boucles = *((int *) param);
   int locale, j;
+
   for (j = 0; j < boucles; j++) {
+    pthread_mutex_lock(&monMutex);
     locale = globale;
     locale++;
     globale = locale;
+    pthread_mutex_unlock(&monMutex);
   }
+  
   pthread_exit(NULL);
 }
 

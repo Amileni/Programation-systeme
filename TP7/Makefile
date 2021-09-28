@@ -2,7 +2,7 @@
 #
 include ../Makefile.inc
 
-EXE = exercice1
+EXE = exercice1 exercice2_mutex serveur
 
 all: ${EXE}
 

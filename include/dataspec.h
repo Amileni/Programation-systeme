@@ -11,6 +11,7 @@ typedef struct DataSpec_t {
   int tid;                    /* identifiant logique */
   int canal;                  /* canal de communication */
   sem_t sem;                  /* semaphore de reveil */
+  pthread_mutex_t mutex;
 } DataSpec;
 
 #endif
