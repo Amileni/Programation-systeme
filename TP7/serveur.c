@@ -20,6 +20,7 @@ int main(int argc, char *argv[]) {
   struct sockaddr_in adrEcoute, adrClient;
   unsigned int lgAdrClient;
 
+  // Créer tous les threads qui seront utilisés par le serveur
   threadsMaker(NB_WORKERS);
 
   fdJournal = open(NOM_JOURNAL, O_CREAT|O_WRONLY|O_APPEND, 0600);
