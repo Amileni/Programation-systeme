@@ -1,2 +1,5 @@
 #untracked pdf files
 *.pdf
+
+#untracked object files
+*.o
