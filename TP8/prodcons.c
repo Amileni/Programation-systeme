@@ -3,27 +3,36 @@
 
 void *threadConsommateur(void* argc);
 void *threadProducteur(void* argc);
+void threadsMakerProd(int nbProd, pthread_t* idThreadProd, int time);
+void threadsMakerConso(int nbConso, pthread_t* idThreadConso, int time);
+
+Tampon tampon;
 
 sem_t dispoProd;
 sem_t dispoCons;
 
+unsigned int nbLoop;
+
 int main(int argc, char *argv[]) {
-    Tampon tampon;
     tampon_init(&tampon);
 
-    sem_init(&dispoProd, P, 0);
+    sem_init(&dispoProd, P, P);
     sem_init(&dispoCons, P, 0);
 
     pthread_t threadID[2];
     int ret = 0;
 
-    ret = pthread_create(&threadID[0], NULL, threadProducteur, &tampon);
+    int prodTime = atoi(argv[1]);
+    int consoTime = atoi(argv[2]);
+    nbLoop = atoi(argv[3]);
+
+    ret = pthread_create(&threadID[0], NULL, threadProducteur, &prodTime);
     printf("Création thread Producteur\n");
 
     if (ret != 0)
       erreur_IO("creation thread");
 
-    ret = pthread_create(&threadID[1], NULL, threadConsommateur, &tampon);
+    ret = pthread_create(&threadID[1], NULL, threadConsommateur, &consoTime);
     printf("Création thread Producteur\n");
 
     if (ret != 0)
@@ -43,12 +52,16 @@ int main(int argc, char *argv[]) {
 //**************************************************
 
 void *threadProducteur(void* argc) {
-    Tampon *tampon = (Tampon *) argc; // Cast de la valeur d'entrée en type Tampon
+    unsigned int *time = (unsigned int *) argc; // Cast de la valeur d'entrée en type Tampon
     int idx;
 
-    for(idx = 0; idx < P; idx++) {              // On répète suffisament pour remplir complètement le tableau
-        tampon_deposer(tampon, idx * idx + P);  // On met la valeur de idx dans le buffer
-        usleep(200000);                         // Attente de 200ms
+    printf("time for prod : %d\n", *time);
+
+    for(idx = 0; idx < nbLoop; idx++) {              // On répète suffisament pour remplir complètement le tableau
+        sem_wait(&dispoProd);
+        tampon_deposer(&tampon, idx * idx + P);  // On met la valeur de idx dans le buffer
+        sem_post(&dispoCons);
+        usleep(*time);                         // Attente de 200ms
     }
 
     pthread_exit(NULL);
@@ -61,15 +74,59 @@ void *threadProducteur(void* argc) {
 //**************************************************
 
 void *threadConsommateur(void* argc) {
-    Tampon *tampon = (Tampon *) argc; // Cast de la valeur d'entrée en type Tampon
+    unsigned int *time = (unsigned int *) argc; // Cast de la valeur d'entrée en type Tampon
     int idx;
     int val;
 
-    for(idx = 0; idx < P; idx++) {                      // On répète suffisament pour remplir complètement le tableau
-        tampon_prendre(tampon, &val);
-        printf("Entier lu :%d\n", val); // On met la valeur de idx dans le buffer
-        sleep(1);                                       // Attente de 200ms
+    printf("time for conso : %d\n", *time);
+
+    for(idx = 0; idx < nbLoop; idx++) {                      // On répète suffisament pour remplir complètement le tableau
+        sem_wait(&dispoCons);
+        tampon_prendre(&tampon, &val);
+        sem_post(&dispoProd);
+        printf("Conso N°%lu : Entier lu :%d\n", pthread_self(),val); // On met la valeur de idx dans le buffer
+        usleep(*time);                                       // Attente de 200ms
     }
 
     pthread_exit(NULL);
+}
+
+//********************************
+// void threadsMakerConso(int nbConso);
+// Aloue tous les worker au nombre de nbWorkers
+// Prend en parametre : - idThreadProd : le tableau de threadID
+//                      - time : le temps que doit prendre le prod
+//********************************
+
+void threadsMakerProd(int nbProd, pthread_t* idThreadProd, int time) {
+  int idx = 0;
+  int ret = 0;
+
+  for(idx = 0; idx < nbProd; idx++) {
+    ret = pthread_create(&idThreadProd[idx], NULL, threadProducteur, &time);
+    printf("Création thread n°%d\n", idx);
+
+    if (ret != 0)
+      erreur_IO("creation thread");
+  }
+}
+
+//********************************
+// void threadsMakerConso(int nbConso);
+// Aloue tous les worker au nombre de nbWorkers
+// Prend en parametre : - idThreadConso : le tableau de threadID
+//                      - time : le temps que doit prendre la conso
+//********************************
+
+void threadsMakerConso(int nbConso, pthread_t* idThreadConso, int time) {
+  int idx = 0;
+  int ret = 0;
+
+  for(idx = 0; idx < nbConso; idx++) {
+    ret = pthread_create(&idThreadConso[idx], NULL, threadConsommateur, &time);
+    printf("Création thread n°%d\n", idx);
+
+    if (ret != 0)
+      erreur_IO("creation thread");
+  }
 }
